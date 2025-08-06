@@ -46,10 +46,9 @@
       { name: "Ethena", symbol: "ENAUSDT" },
       { name: "Kamino", symbol: "KAMIOUSDT" }
     ];
-
     const timeframes = ["15m", "1h", "4h", "1d"];
 
-    function calculateRSI(closes, period = 14) {
+    function calculateSmoothedRSI(closes, period = 14) {
       let gains = 0, losses = 0;
       for (let i = 1; i <= period; i++) {
         const diff = closes[i] - closes[i - 1];
@@ -58,6 +57,13 @@
       }
       let avgGain = gains / period;
       let avgLoss = losses / period;
+
+      for (let i = period + 1; i < closes.length; i++) {
+        const diff = closes[i] - closes[i - 1];
+        avgGain = (avgGain * (period - 1) + (diff > 0 ? diff : 0)) / period;
+        avgLoss = (avgLoss * (period - 1) + (diff < 0 ? -diff : 0)) / period;
+      }
+
       if (avgLoss === 0) return 100;
       const rs = avgGain / avgLoss;
       return Math.round(100 - (100 / (1 + rs)));
@@ -69,7 +75,7 @@
         const res = await fetch(url);
         const data = await res.json();
         const closes = data.map(c => parseFloat(c[4]));
-        return calculateRSI(closes);
+        return calculateSmoothedRSI(closes);
       } catch (err) {
         return null;
       }
@@ -101,3 +107,4 @@
   </script>
 </body>
 </html>
+
