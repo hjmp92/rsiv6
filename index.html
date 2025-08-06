@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>RSI Multi-Timeframe</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { padding: 8px; border-bottom: 1px solid #ccc; text-align: left; }
+    td.green { color: green; }
+    td.red { color: red; }
+  </style>
+</head>
+<body>
+  <h1>RSI Multi-Timeframe Monitor</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Criptomoeda</th>
+        <th>15m</th>
+        <th>1h</th>
+        <th>4h</th>
+        <th>1d</th>
+        <th>Gráfico</th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+
+  <script>
+    const coins = [
+      { name: "Bitcoin", symbol: "BTCUSDT" },
+      { name: "Ethereum", symbol: "ETHUSDT" },
+      { name: "Solana", symbol: "SOLUSDT" },
+      { name: "XRP", symbol: "XRPUSDT" },
+      { name: "Litecoin", symbol: "LTCUSDT" },
+      { name: "Binance Coin", symbol: "BNBUSDT" },
+      { name: "Dogecoin", symbol: "DOGEUSDT" },
+      { name: "Chainlink", symbol: "LINKUSDT" },
+      { name: "Aave", symbol: "AAVEUSDT" },
+      { name: "Ondo", symbol: "ONDOUSDT" },
+      { name: "Maker", symbol: "MKRUSDT" },
+      { name: "Pendle", symbol: "PENDLEUSDT" },
+      { name: "Sui", symbol: "SUIUSDT" },
+      { name: "Jupiter", symbol: "JUPUSDT" },
+      { name: "Ethena", symbol: "ENAUSDT" },
+      { name: "Kamino", symbol: "KAMIOUSDT" }
+    ];
+
+    const timeframes = ["15m", "1h", "4h", "1d"];
+
+    function calculateRSI(closes, period = 14) {
+      let gains = 0, losses = 0;
+      for (let i = 1; i <= period; i++) {
+        const diff = closes[i] - closes[i - 1];
+        if (diff >= 0) gains += diff;
+        else losses -= diff;
+      }
+      let avgGain = gains / period;
+      let avgLoss = losses / period;
+      if (avgLoss === 0) return 100;
+      const rs = avgGain / avgLoss;
+      return Math.round(100 - (100 / (1 + rs)));
+    }
+
+    async function fetchRSI(symbol, interval) {
+      const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=100`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const closes = data.map(c => parseFloat(c[4]));
+        return calculateRSI(closes);
+      } catch (err) {
+        return null;
+      }
+    }
+
+    async function renderTable() {
+      const tbody = document.getElementById("table-body");
+      for (const coin of coins) {
+        const row = document.createElement("tr");
+        const rsiValues = {};
+        for (const tf of timeframes) {
+          const rsi = await fetchRSI(coin.symbol, tf);
+          rsiValues[tf] = rsi;
+        }
+        row.innerHTML = `
+          <td>${coin.name} (${coin.symbol})</td>
+          ${timeframes.map(tf => {
+            const val = rsiValues[tf];
+            const colorClass = val < 30 ? 'green' : val > 70 ? 'red' : '';
+            return `<td class="${colorClass}">${val ?? '...'}</td>`;
+          }).join('')}
+          <td><a href="https://www.tradingview.com/chart/?symbol=BINANCE:${coin.symbol}" target="_blank">Ver Gráfico</a></td>
+        `;
+        tbody.appendChild(row);
+      }
+    }
+
+    renderTable();
+  </script>
+</body>
+</html>
